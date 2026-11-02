@@ -292,6 +292,7 @@ class Qwen3LocalEngine(BaseASREngine):
         while i < n:
             cancel.raise_if_cancelled()
             batch = chunks[i:i + bs]
+            self.backend.set_cancel(cancel)
             try:
                 res = self.backend.transcribe([c.waveform() for c in batch], [context or ""] * len(batch),
                                               [forced] * len(batch))
@@ -311,6 +312,7 @@ class Qwen3LocalEngine(BaseASREngine):
                         self.load(force_cpu=True)
                         continue
                 raise
+            cancel.raise_if_cancelled()  # generation may have been stopped early by the cancel token
             for k, r in enumerate(res):
                 raws[i + k] = r
             i += len(batch)

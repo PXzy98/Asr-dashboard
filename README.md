@@ -278,7 +278,7 @@ uv run python build_exe.py
 uv sync --extra cpu
 uv run ruff check .
 uv run pytest                 # 默认跳过 @pytest.mark.gpu / network
-uv run pytest -m gpu          # 需要真实模型和显卡
+ASR_TEST_DIALOG=对话.wav ASR_TEST_LONG=长音频.mp3 uv run pytest -m gpu -s   # 需要真实模型和显卡
 ```
 
 目录结构见 `src/asr_dashboard/`：`config/`（pydantic 配置、密钥）、`core/`（音频、分段、VAD、说话人分离、声纹、pipeline、任务与批量）、`engines/`（本地 Qwen3 三种后端、四种 API 接入）、`export/`、`text/`（规则、大模型后处理）、`realtime/`（采集、协议、会话、验证）、`ui/`（页面与控件）。服务端脚本在 `server/`。

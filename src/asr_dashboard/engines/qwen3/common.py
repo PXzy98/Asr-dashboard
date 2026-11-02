@@ -96,6 +96,23 @@ class Qwen3Backend:
     def set_batch_size(self, n: int) -> None:
         pass
 
+    def set_cancel(self, cancel) -> None:
+        """Token checked inside generation so a running batch stops within one decoding step."""
+        self._cancel = cancel
+
+
+def cancel_stopping_criteria(cancel):
+    """transformers StoppingCriteriaList that ends generation as soon as ``cancel`` is set."""
+    import torch
+    from transformers import StoppingCriteria, StoppingCriteriaList
+
+    class _Cancel(StoppingCriteria):
+        def __call__(self, input_ids, scores, **kwargs):
+            return torch.full((input_ids.shape[0],), bool(cancel and cancel.cancelled), dtype=torch.bool,
+                              device=input_ids.device)
+
+    return StoppingCriteriaList([_Cancel()])
+
 
 # ------------------------------------------------------------------------------------ availability
 @dataclass

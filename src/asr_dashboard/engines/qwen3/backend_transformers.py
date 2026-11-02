@@ -12,7 +12,7 @@ import logging
 import numpy as np
 
 from asr_dashboard.core.devices import torch_dtype
-from asr_dashboard.engines.qwen3.common import LoadParams, Qwen3Backend, RawResult
+from asr_dashboard.engines.qwen3.common import LoadParams, Qwen3Backend, RawResult, cancel_stopping_criteria
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ class TransformersBackend(Qwen3Backend):
         self.processor = None
         self.batch_size = 32
         self.max_new_tokens = 1024
+        self._cancel = None
 
     def load(self, p: LoadParams) -> dict:
         import torch
@@ -67,7 +68,10 @@ class TransformersBackend(Qwen3Backend):
             )
             inputs = inputs.to(self.model.device, self.model.dtype)
             with torch.inference_mode():
-                gen = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens, do_sample=False)
+                extra = {"stopping_criteria": cancel_stopping_criteria(self._cancel)} if self._cancel else {}
+                gen = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens, do_sample=False, **extra)
+            if self._cancel is not None and self._cancel.cancelled:
+                break
             new_tokens = gen[:, inputs["input_ids"].shape[1]:]
             for row, lang in zip(new_tokens, sub_l, strict=True):
                 if lang:
