@@ -19,7 +19,7 @@ def make_tree(root: Path):
     (root / "broken.wav").write_bytes(b"garbage")
     (root / "empty.mp3").write_bytes(b"")
     (root / ".hidden" / "h.mp3").write_bytes(b"x")
-    (root / "notes.txt").write_text("no")
+    (root / "notes.txt").write_text("no", encoding="utf-8")
     return root
 
 
@@ -46,9 +46,9 @@ def fake_process(fail_names=(), calls=None, crash_after=None):
         prog(0.5, "half")
         out_dir.mkdir(parents=True, exist_ok=True)
         p = out_dir / f"{Path(item.rel).stem}.srt"
-        p.write_text("1\n00:00:00,000 --> 00:00:01,000\nx\n")
+        p.write_text("1\n00:00:00,000 --> 00:00:01,000\nx\n", encoding="utf-8")
         t = out_dir / f"{Path(item.rel).stem}.txt"
-        t.write_text("x")
+        t.write_text("x", encoding="utf-8")
         return B.ProcessOutcome({"srt": str(p), "txt": str(t)}, 1.0, ["张三"], 0)
     return process
 
@@ -67,7 +67,7 @@ def test_sequential_run_with_failure_and_reports(tmp_path):
     st = {i.rel: i.status for i in m.items}
     assert st["broken.wav"] == B.FAILED and sum(v == B.DONE for v in st.values()) == 20
     assert (tmp_path / "out" / "sub" / "20.srt").exists()  # mirrored structure
-    rep = json.loads((tmp_path / "out" / "batch_report.json").read_text())
+    rep = json.loads((tmp_path / "out" / "batch_report.json").read_text(encoding="utf-8"))
     assert rep["done"] == 20 and rep["failed"] == 1
     assert "broken.wav" in (tmp_path / "out" / "batch_report.csv").read_text(encoding="utf-8-sig")
     assert m.finished_at is not None and not m.unfinished
@@ -79,7 +79,7 @@ def test_crash_and_resume(tmp_path):
     with pytest.raises(KeyboardInterrupt):
         B.BatchRunner(m, fake_process(calls=calls, crash_after=7), prevent_sleep=False).run()
     # stray temp file from an interrupted write must not break loading
-    Path(m.path + ".999.tmp").write_text("{ half")
+    Path(m.path + ".999.tmp").write_text("{ half", encoding="utf-8")
     reloaded = B.BatchManifest.load(m.path)
     assert reloaded.unfinished and reloaded.next_index() == 7
     assert [i.status for i in reloaded.items[:7]] == [B.DONE] * 7

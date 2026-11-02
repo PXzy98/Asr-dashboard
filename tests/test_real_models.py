@@ -86,7 +86,9 @@ def test_qwen3_local_transcribes_and_logs_load_kwargs(tmp_path, caplog, aligner)
     assert "speech" in text or "test" in text
     assert all(seg.end > seg.start for seg in out.result.segments)
     if aligner:
-        assert out.result.segments[0].words and out.result.segments[0].words[-1].end > 1.0
+        # the aligner may split "Hello." into its own sentence, so check the words across all segments
+        words = [w for seg in out.result.segments for w in seg.words]
+        assert words and all(seg.words for seg in out.result.segments) and words[-1].end > 1.0
 
 
 @pytest.mark.gpu

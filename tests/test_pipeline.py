@@ -77,9 +77,9 @@ def test_full_pipeline_fake_engine(tmp_path):
     assert r.context_used == "会议：预算" and eng.contexts[0] == "会议：预算"
     assert r.postprocess_mode == "rules"
     assert set(out.outputs) == {"srt", "txt", "json"}
-    srt = out.outputs["srt"].read_text()
+    srt = out.outputs["srt"].read_text(encoding="utf-8")
     assert "00:00:55," in srt
-    data = json.loads(out.outputs["json"].read_text())
+    data = json.loads(out.outputs["json"].read_text(encoding="utf-8"))
     assert data["engine_id"] == "fake" and "识别" in data["timings"]
     assert not list((tmp_path / "tmp").glob("*.wav"))  # temp cleaned
 
@@ -103,7 +103,7 @@ def test_pipeline_diarization_and_voiceprints(tmp_path):
     named = [i for i in r.speakers.values() if i.display_name == "王五"]
     assert len(named) == 1 and named[0].match_score == pytest.approx(1.0)
     assert all(i.embedding for i in r.speakers.values())
-    srt = (tmp_path / "out" / "talk.srt").read_text()
+    srt = (tmp_path / "out" / "talk.srt").read_text(encoding="utf-8")
     assert "[王五]" in srt and "[SPEAKER_0" in srt
 
 
@@ -124,7 +124,7 @@ def test_streaming_and_cancel(tmp_path):
     eng = FakeEngine()
     eng.batch_size = 1
     out = Pipeline(cfg, eng, use_silero=False).run(TaskRequest(str(src)), None, CancelToken())
-    assert out.outputs["srt"].read_text().count("-->") == 3
+    assert out.outputs["srt"].read_text(encoding="utf-8").count("-->") == 3
     tok = CancelToken()
     eng2 = FakeEngine(script=lambda c: tok.cancel() or "x")
     eng2.batch_size = 1

@@ -144,7 +144,7 @@ def test_session_records_and_writes(tmp_path):
     import soundfile as sf
 
     assert sf.info(info["wav"]).duration == pytest.approx(3.0, abs=0.01)
-    assert "句子5。" in (tmp_path / "live.txt").read_text() and "-->" in (tmp_path / "live.srt").read_text()
+    assert "句子5。" in (tmp_path / "live.txt").read_text(encoding="utf-8") and "-->" in (tmp_path / "live.srt").read_text(encoding="utf-8")
 
 
 def test_session_reconnects_and_replays(tmp_path):

@@ -69,12 +69,12 @@ def test_streaming_writer_survives_partial(tmp_path):
     w = StreamingWriter(tmp_path, "live", ["txt", "srt", "json"], W.ExportOptions())
     w.write_segments([Segment("first.", 0, 1, "SPEAKER_00")], {"SPEAKER_00": "Ann"})
     # simulate crash: files already contain the first chunk
-    assert "Ann: first." in (tmp_path / "live.txt").read_text()
-    assert "1\n00:00:00,000 --> 00:00:01,000\n[Ann] first." in (tmp_path / "live.srt").read_text()
+    assert "Ann: first." in (tmp_path / "live.txt").read_text(encoding="utf-8")
+    assert "1\n00:00:00,000 --> 00:00:01,000\n[Ann] first." in (tmp_path / "live.srt").read_text(encoding="utf-8")
     assert (tmp_path / "live.jsonl.part").exists()
     w.write_segments([Segment("second.", 1, 2)])
     paths = w.finalize()
-    data = json.loads(paths["json"].read_text())
+    data = json.loads(paths["json"].read_text(encoding="utf-8"))
     assert [s["text"] for s in data["segments"]] == ["first.", "second."]
     assert not (tmp_path / "live.jsonl.part").exists()
 

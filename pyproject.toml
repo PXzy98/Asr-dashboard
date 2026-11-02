@@ -40,7 +40,7 @@ dashscope = ["dashscope>=1.20"]
 # PyTorch build selection (pick at most one): uv sync --extra cu128 / --extra rocm / --extra cpu
 cpu = ["torch>=2.8", "torchaudio>=2.8"]
 cu128 = ["torch>=2.8", "torchaudio>=2.8"]
-rocm = ["torch>=2.8", "torchaudio>=2.8"]
+rocm = ["torch>=2.8", "torchaudio>=2.8", "pytorch-triton-rocm; sys_platform == 'linux'"]
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-qt>=4.4", "ruff>=0.6"]
@@ -78,6 +78,10 @@ torch = [
 torchaudio = [
     { index = "pytorch-cpu", extra = "cpu" },
     { index = "pytorch-cu128", extra = "cu128" },
+    { index = "pytorch-rocm", extra = "rocm", marker = "sys_platform == 'linux'" },
+]
+# torch+rocm depends on pytorch-triton-rocm, which only exists on the (explicit) ROCm index
+pytorch-triton-rocm = [
     { index = "pytorch-rocm", extra = "rocm", marker = "sys_platform == 'linux'" },
 ]
 
