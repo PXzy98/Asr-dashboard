@@ -259,15 +259,15 @@ uv run python build_exe.py
 | 上下文参数 | qwen-asr / vLLM：`context`（系统消息）；Transformers：`apply_transcription_request(prompt=...)`（系统消息） | 源码 |
 | 对齐器上限 | README 写 5 分钟；qwen-asr 代码 `MAX_FORCE_ALIGN_INPUT_SECONDS = 180`，本程序按 180 秒切块 | 源码 |
 | Transformers 原生支持 | 从 **5.13.0** 起；类 `Qwen3ASRForConditionalGeneration`（`AutoModelForSpeechSeq2Seq` 映射），对齐器 `Qwen3ASRForTokenClassification`，有 `-hf` 版本（`Qwen/Qwen3-ForcedAligner-0.6B-hf`） | 5.12.1 / 5.13.0 / 5.22.1 wheel 对比 |
-| qwen-asr 与 transformers 5 | qwen-asr 0.0.6 固定 `transformers==4.57.6` → 两个后端必须分组安装 | PyPI 元数据 |
+| qwen-asr 与 transformers 5 | qwen-asr 0.0.6（GitHub main 也一样）固定 `transformers==4.57.6` → 两个后端分组安装 | PyPI 元数据 + GitHub main |
 | pyannote.audio 4.x | `Pipeline.from_pretrained(checkpoint, token=)`，本地目录可离线；输出 `speaker_diarization` / `exclusive_speaker_diarization` / `speaker_embeddings`；要求 torch ≥ 2.8 | 4.0.7 源码 |
 | DiariZen | conda/py3.10 + torch 2.1.1 + 自带 pyannote-audio；`DiariZenPipeline.from_pretrained("BUT-FIT/diarizen-wavlm-large-s80-md")`；最新 `-v2` 模型；权重 CC BY-NC 4.0 | GitHub README |
-| vLLM realtime | `/v1/realtime`：`session.created`、`session.update{model}`、`input_audio_buffer.append/commit(final)`、`transcription.delta/done`、`error`；不接受 prompt/语言；需要 `Qwen3ASRRealtimeGeneration` 架构 | vLLM 0.32.0 源码 |
+| vLLM realtime | `/v1/realtime`：`session.created`、`session.update{model}`、`input_audio_buffer.append/commit(final)`、`transcription.delta/done`、`error`；不接受 prompt/语言；必须加 `--hf-overrides '{"architectures":["Qwen3ASRRealtimeGeneration"]}'` | vLLM 0.32.0 源码 + 官方 supported_models 文档 + 官方示例客户端 |
 | DashScope 录音文件识别 | `POST /api/v1/services/audio/asr/transcription` + `X-DashScope-Async: enable`，`GET /api/v1/tasks/{id}`，结果 `transcription_url` | dashscope 2.0.3 SDK 源码 |
-| DashScope 临时存储与 `file_url` 字段 | `getPolicy` → OSS 表单上传 → `oss://`，需 `X-DashScope-OssResourceResolve: enable`（检索到官方文档摘要，未能直接打开）；`input` 字段名做成可配置 | 部分核实 |
-| DashScope 实时 | `wss://…/api-ws/v1/realtime?model=qwen3-asr-flash-realtime`，`session.update`（corpus/language/server_vad）、`…input_audio_transcription.completed`、`session.finish` | SDK 源码；临时结果事件名未能核实 |
+| DashScope 临时存储与请求体 | `input.file_url`（单个 URL）、`parameters.channel_id=[0]`、`enable_itn`、`enable_words`；临时存储 `oss://` 48 小时有效，需 `X-DashScope-OssResourceResolve: enable` | 官方 API 参考页（检索摘要；站点在本环境被拦截，未能直接打开） |
+| DashScope 实时 | `wss://…/api-ws/v1/realtime?model=qwen3-asr-flash-realtime`，`session.update`（corpus/language/server_vad）；临时结果 `…input_audio_transcription.text`（`text` 为已确定前缀 + `stash` 为待定后缀），最终结果 `…completed`；`session.finish` | SDK 源码 + 官方服务端事件文档（检索摘要） |
 | WASAPI 回环库 | 选 PyAudioWPatch（有预编译 Windows wheel、持续发布） | PyPI |
-| GLM-ASR | `/api/paas/v4/audio/transcriptions`，模型 `glm-asr-2512`（国际站）/ `glm-asr` | 检索结果，官方文档未能直接打开 |
+| GLM-ASR | `/api/paas/v4/audio/transcriptions`，模型 `glm-asr-2512`；≤ 30 秒、≤ 25 MB、仅 wav/mp3（预设因此只用 mp3 压缩）；官方未写明 prompt 参数（预设默认关闭上下文） | 官方文档（检索摘要） |
 | OpenAI / Groq | `gpt-4o-transcribe` 只支持 `json`；`whisper-1` 支持 `verbose_json` + `timestamp_granularities`；Groq `whisper-large-v3-turbo` | 检索结果 |
 
 ---

@@ -10,8 +10,9 @@ Verified from the dashscope 2.0.3 SDK source:
 FileTrans needs a URL: local audio is first uploaded to DashScope's free temporary storage
 (``GET /api/v1/uploads?action=getPolicy&model=...`` -> OSS form upload -> ``oss://`` URL, valid 48 h), and
 requests then need ``X-DashScope-OssResourceResolve: enable``. The temporary-storage flow and the exact
-``input`` key for qwen3-asr-flash-filetrans could not be checked against the live docs from this
-environment, so both are configurable (``options.input_key``, ``options.file_url``).
+``input`` layout were confirmed via search results of the official API reference (``input.file_url``, one URL
+per task; ``parameters.channel_id=[0]``, ``enable_itn``, ``enable_words``); both stay configurable
+(``options.input_key``, ``options.file_url``).
 """
 
 from __future__ import annotations
@@ -87,7 +88,7 @@ class DashScopeQwenEngine(BaseAPIEngine):
     def call(self, up: Upload, language: str | None, context: str | None, cancel: CancelToken) -> CallResult:
         h = self.host()
         file_url = self.cfg.options.get("file_url") or self.upload_temp(up, cancel)
-        params: dict = {"channel_id": [0]}
+        params: dict = {"channel_id": [0], "enable_itn": False, "enable_words": True}
         if language:
             params["language"] = language
         if context:

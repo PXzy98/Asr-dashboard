@@ -184,3 +184,14 @@ def test_realtime_disabled_until_validated():
     assert c.realtime_active
     c.realtime.enabled = False
     assert not c.realtime_active
+
+
+def test_first_sentence_after_reconnect_is_deduplicated(tmp_path):
+    finals = []
+    s = RealtimeSession(SessionSettings("vllm_realtime", "ws://unused", "", "m", None), tmp_path, "d",
+                        SessionCallbacks(on_final=finals.append))
+    s._on_final("我们明天去公园散步。")
+    s._dedupe_next = True  # as set by a successful reconnect
+    s._on_final("公园散步。然后吃饭。")
+    s._on_final("公园很大。")  # only the first sentence after reconnect is checked
+    assert [f["text"] for f in finals] == ["我们明天去公园散步。", "然后吃饭。", "公园很大。"]

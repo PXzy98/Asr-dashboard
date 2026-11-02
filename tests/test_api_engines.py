@@ -259,3 +259,15 @@ def test_api_engine_through_pipeline_with_local_diarization(tmp_path):
     assert len(r.segments) == 4 and r.segments[1].start == 10
     assert [s.speaker for s in r.segments] == ["SPEAKER_00", "SPEAKER_01", "SPEAKER_00", "SPEAKER_01"]
     assert any(i.display_name == "赵六" for i in r.speakers.values())
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg")
+def test_glm_preset_only_uses_mp3_and_no_context():
+    from asr_dashboard.engines.api import from_preset
+
+    m = from_preset("glm")
+    m.max_file_mb = 0.2  # force compression for the test
+    e = create_api_engine(m, "k")
+    ups = e.prepare_uploads(chunk(20.0))
+    assert ups and all(u.mime in ("audio/wav", "audio/mpeg") for u in ups) and any(u.mime == "audio/mpeg" for u in ups)
+    assert not e.capabilities.context_prompt and all(u.duration <= 30 for u in ups)

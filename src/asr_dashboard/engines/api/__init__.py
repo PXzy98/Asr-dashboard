@@ -58,7 +58,8 @@ PRESETS: dict[str, dict] = {
                        model="Qwen/Qwen3-ASR-1.7B", timestamps=False, concurrency=4, timeout=300),
     "glm": dict(name="智谱 GLM-ASR", type="openai_transcriptions", base_url="https://open.bigmodel.cn/api/paas/v4",
                 model="glm-asr-2512", timestamps=False, max_file_mb=25, max_audio_seconds=30,
-                supports_context=True, options={"response_format": "json"}),
+                # official docs: wav/mp3 only, <= 25 MB, <= 30 s; no documented prompt/context field
+                supports_context=False, options={"response_format": "json", "compress_formats": ["mp3"]}),
 }
 
 

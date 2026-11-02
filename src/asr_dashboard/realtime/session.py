@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 
 from asr_dashboard.core.audio import SAMPLE_RATE, float_to_pcm16
+from asr_dashboard.core.segmentation import strip_leading_tokens, text_overlap_len
 from asr_dashboard.export.streaming import StreamingWriter
 from asr_dashboard.export.writers import ExportOptions
 from asr_dashboard.models import Segment
@@ -90,6 +91,7 @@ class RealtimeSession:
         self._recent: collections.deque[bytes] = collections.deque()
         self._dropped_samples = 0
         self._last_final_end = 0.0
+        self._dedupe_next = False  # first sentence after a reconnect may repeat replayed audio
         self._writer = StreamingWriter(self.out_dir, stem, ["txt", "srt"], ExportOptions(txt_timestamps=True),
                                        overwrite=True)
         self._wav = None
@@ -239,6 +241,7 @@ class RealtimeSession:
             self.cb.on_error(self.state.error)
             return
         self._client = client
+        self._dedupe_next = bool(self.state.sentences)
         if self._dropped_samples:
             self._emit_final(f"[连接中断 {self._dropped_samples / SAMPLE_RATE:.0f} 秒]", marker=True)
             self._dropped_samples = 0
@@ -293,6 +296,14 @@ class RealtimeSession:
         self.cb.on_partial(text)
 
     def _on_final(self, text: str) -> None:
+        if self._dedupe_next:
+            self._dedupe_next = False
+            prev = next((x["text"] for x in reversed(self.state.sentences) if not x.get("marker")), "")
+            n = text_overlap_len(prev, text)  # >= 2 tokens, avoids eating a genuinely repeated word
+            if n:
+                text = strip_leading_tokens(text, n)
+                if not text.strip():
+                    return
         self._emit_final(text)
 
     def _emit_final(self, text: str, marker: bool = False) -> None:

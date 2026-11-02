@@ -96,6 +96,8 @@ def common_fields() -> list[SettingField]:
         SettingField("max_audio_seconds", "单次音频时长上限（秒）", "float", 0, "0 表示不限", minimum=0),
         SettingField("timestamps", "请求时间戳", "bool", True),
         SettingField("extra", "额外参数（JSON）", "json", {}, "原样合并进请求"),
+        SettingField("options.compress_formats", "超限时可用的压缩格式（JSON 数组）", "json", ["flac", "mp3"],
+                     "服务端不支持 FLAC 时改为 [\"mp3\"]"),
     ]
 
 
@@ -268,7 +270,9 @@ class BaseAPIEngine(BaseASREngine):
         dur = len(samples) / 16000
         if not limit or len(data) <= limit:
             return [Upload(data, "audio.wav", "audio/wav", offset, dur, samples)]
-        for fmt, mime in (("flac", "audio/flac"), ("mp3", "audio/mpeg")):
+        mimes = {"flac": "audio/flac", "mp3": "audio/mpeg"}
+        allowed = self.cfg.options.get("compress_formats") or ["flac", "mp3"]
+        for fmt, mime in ((f, mimes[f]) for f in allowed if f in mimes):
             try:
                 enc = self._encode(samples, fmt)
             except Exception as e:  # noqa: BLE001
