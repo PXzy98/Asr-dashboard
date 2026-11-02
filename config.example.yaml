@@ -1,0 +1,74 @@
+# ASR Dashboard 配置示例。复制为 config.yaml 后修改；缺失或非法的字段会自动使用默认值。
+# API Key / HF Token 不写在这里，保存在系统钥匙串（或 ~/.asr-dashboard/secrets.yaml）。
+version: 1
+app: { output_dir: output, temp_dir: '', cleanup_temp: true, theme: system, ui_language: zh }
+engine: { default: qwen3-local }
+qwen3:
+  variant: 1.7b
+  backend: qwen_asr
+  source: huggingface
+  local_path: ''
+  aligner_local_path: ''
+  cache_dir: ''
+  device: auto
+  dtype: auto
+  attn_implementation: auto
+  torch_compile: false
+  max_inference_batch_size: 32
+  max_new_tokens: 1024
+  gpu_memory_utilization: 0.7
+  language: auto
+  context: ''
+  context_max_chars: 2000
+  keep_loaded: true
+  oom_fallback_cpu: true
+  aligner: { enabled: true, device: follow, dtype: follow, attn_implementation: follow }
+glossaries: []                  # [{ id, name, description, terms: [..] }]
+segmentation: { strategy: hybrid, target_duration: 60, min_segment: 5, max_segment: 60, overlap: 0.5,
+                silence_threshold_db: -40, min_silence: 0.3, max_sentence_duration: 15 }
+diarization:
+  enabled: false
+  backend: auto
+  num_speakers: 0
+  min_speakers: 1
+  max_speakers: 20
+  device: follow
+  min_turn_duration: 0.3
+  merge_gap_threshold: 0.5
+  pyannote: { model_dir: '' }
+  diarizen: { model_id: 'BUT-FIT/diarizen-wavlm-large-s80-md-v2', env_dir: '', license_accepted: false }
+  embedding: { model: microsoft/wavlm-base-plus-sv, clustering: agglomerative,
+               similarity_threshold: 0.7, window: 1.5, step: 0.75 }
+voiceprint: { enabled: true, embedding_model: pyannote, match_threshold: 0.6, auto_add_on_correction: false }
+text: { merge_sentences: true, normalize_punctuation: true, remove_fillers: false,
+        smart_capitalize: true, filler_words: { zh: [嗯, 啊, 呃, 那个, 就是], en: [um, uh, you know], ja: [えーと, あの] } }
+output: { formats: [srt, txt], auto_save: true, streaming: false, include_speakers: true,
+          txt_timestamps: true, ass_font: Arial, ass_font_size: 20, on_existing: skip }
+batch: { recursive: true, sort: natural, skip_hidden: true, prevent_sleep: true, oom_retry: true }
+llm:
+  enabled: true
+  base_url: ''
+  model: ''
+  validated: false
+  json_mode: false
+  timeout: 120
+  temperature: 0.2
+  chunk_chars: 1500
+  concurrency: 2
+  tasks: { cleanup: true, summary: false, speaker_guess: false }
+  max_change_ratio: 0.4
+realtime:
+  enabled: true
+  protocol: vllm_realtime
+  url: ''
+  model: ''
+  language: auto
+  validated: false
+  chunk_ms: 100
+  auto_reconnect: true
+  max_reconnects: 5
+  refine_after_stop: true
+  live_speaker_id: false
+  source: microphone
+api_models: []
+logging: { level: INFO, log_dir: '', max_file_size_mb: 10, backup_count: 5 }
