@@ -25,6 +25,7 @@ class SettingField:
     enabled_if: dict[str, Any] | None = None
     disabled_reason: str = ""  # tooltip shown when disabled by availability
     special_values: dict[Any, str] = field(default_factory=dict)  # e.g. {-1: "不限"}
+    disabled_choices: dict[Any, str] = field(default_factory=dict)  # enum value -> reason (greyed out)
     group: str = ""
     advanced: bool = False
 
