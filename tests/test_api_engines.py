@@ -271,3 +271,30 @@ def test_glm_preset_only_uses_mp3_and_no_context():
     ups = e.prepare_uploads(chunk(20.0))
     assert ups and all(u.mime in ("audio/wav", "audio/mpeg") for u in ups) and any(u.mime == "audio/mpeg" for u in ups)
     assert not e.capabilities.context_prompt and all(u.duration <= 30 for u in ups)
+
+
+def test_overlapping_uploads_are_deduplicated():
+    # review finding: hard cuts inside one chunk overlap by 0.5 s; text from the overlap must not repeat
+    calls = []
+
+    def h(req):
+        calls.append(1)
+        text = "alpha beta gamma delta" if len(calls) == 1 else "gamma delta epsilon zeta"
+        return httpx.Response(200, json={"text": text})
+
+    e, _ = engine(h, max_audio_seconds=30, timestamps=False, concurrency=1)
+    segs = e.transcribe([chunk(50.0)], None, None, lambda *a: None, CancelToken())
+    assert [s.text for s in segs] == ["alpha beta gamma delta", "epsilon zeta"]
+
+
+def test_explicit_auto_language_overrides_model_default():
+    sent = []
+
+    def h(req):
+        sent.append(req.content.decode("latin-1"))
+        return httpx.Response(200, json=verbose())
+
+    e, _ = engine(h, language="zh")
+    e.transcribe([chunk()], "auto", None, lambda *a: None, CancelToken())  # task explicitly says auto
+    e.transcribe([chunk()], None, None, lambda *a: None, CancelToken())  # no override -> model default
+    assert 'name="language"' not in sent[0] and 'name="language"' in sent[1]

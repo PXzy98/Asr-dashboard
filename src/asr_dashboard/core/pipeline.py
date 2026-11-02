@@ -270,12 +270,9 @@ class Pipeline:
         return segm.dedup_chunk_segments(per_chunk, bounds)
 
     def _language(self) -> str | None:
-        lang = self.language_override
-        if lang is not None:
-            return None if lang == "auto" else lang
-        eng_cfg = getattr(self.engine, "cfg", None)
-        lang = getattr(eng_cfg, "language", None) or "auto"
-        return None if lang == "auto" else lang
+        """Task language override ("auto" is passed through so engines don't fall back to their default);
+        None means "no override" and lets the engine use its configured language."""
+        return self.language_override or None
 
     def _diarize(self, result: TranscriptionResult, wav_path: Path, samples, step, cancel):
         cfg = self.cfg.diarization

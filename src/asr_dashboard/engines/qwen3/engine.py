@@ -284,7 +284,7 @@ class Qwen3LocalEngine(BaseASREngine):
                    on_progress: ProgressFn, cancel: CancelToken) -> list[Segment]:
         if not self.is_loaded:
             self.load()
-        forced = lang_name(language or self.cfg.language)
+        forced = lang_name(self.cfg.language if language is None else language)  # 'auto' -> None
         n = len(chunks)
         raws: list[common.RawResult | None] = [None] * n
         bs = n if self.batch_size in (-1, 0) else max(1, self.batch_size)

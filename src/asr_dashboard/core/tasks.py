@@ -120,7 +120,7 @@ class BatchWorker(QThread):
                                                self.cfg.batch.prevent_sleep, self.cfg.batch.oom_retry,
                                                engine.reduce_batch_size, cb)
             self.runner.run()
-            if not getattr(engine, "cfg", None) or not engine.cfg.keep_loaded:  # type: ignore[attr-defined]
+            if not getattr(getattr(engine, "cfg", None), "keep_loaded", True):  # API configs have no keep_loaded
                 engine.unload()
             self.finished_batch.emit(self.manifest)
         except Exception as e:  # noqa: BLE001

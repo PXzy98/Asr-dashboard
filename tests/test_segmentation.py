@@ -102,3 +102,13 @@ def test_word_level_dedup_by_time():
     out = segm.dedup_chunk_segments([prev, nxt], [Bound(0, 60), Bound(59.5, 120, 0.5)])
     allw = [w.text for s in out for w in s.words]
     assert allw == ["a", "b", "c", "d"]
+
+
+def test_short_tail_never_exceeds_max_segment():
+    # review finding: 32 s with a 30 s limit used to come back as one 32 s chunk
+    b = segm.split_hybrid(32, [], SegParams(max_segment=30, target_duration=27, min_segment=5))
+    assert len(b) == 2 and all(x.end - x.start <= 30 + 1e-9 for x in b)
+    assert b[0].start == 0 and b[-1].end == 32 and b[1].overlap_prev > 0
+    for total in (61, 62.5, 89, 121, 181):
+        bb = segm.split_duration(total, SegParams(target_duration=60, max_segment=60, min_segment=5))
+        assert all(x.end - x.start <= 60 + 1e-9 for x in bb) and bb[-1].end == total

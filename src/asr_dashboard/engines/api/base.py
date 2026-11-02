@@ -298,7 +298,9 @@ class BaseAPIEngine(BaseASREngine):
 
     def transcribe(self, chunks: list[AudioChunk], language: str | None, context: str | None,
                    on_progress: ProgressFn, cancel: CancelToken) -> list[Segment]:
-        language = language or (None if self.cfg.language in ("", "auto") else self.cfg.language)
+        if language is None:  # no task override -> model default
+            language = self.cfg.language
+        language = None if language in ("", "auto") else language
         if not self.cfg.supports_context:
             context = None
         uploads = [u for c in chunks for u in self.prepare_uploads(c)]
@@ -322,9 +324,15 @@ class BaseAPIEngine(BaseASREngine):
             raise
         finally:
             cancel.remove_callback(self.abort)
-        out = [s for r in results for s in r]
-        out.sort(key=lambda s: s.start)
-        return out
+        # hard cuts inside a chunk overlap by up to 0.5 s: remove text recognised twice
+        bounds: list[segm.Bound] = []
+        for i, u in enumerate(uploads):
+            prev = uploads[i - 1] if i else None
+            ov = max(0.0, prev.offset + prev.duration - u.offset) if prev is not None else 0.0
+            bounds.append(segm.Bound(u.offset, u.offset + u.duration, ov if ov < u.duration else 0.0))
+        for r in results:
+            r.sort(key=lambda x: x.start)
+        return segm.dedup_chunk_segments(results, bounds)
 
     def _one(self, up: Upload, language, context, cancel: CancelToken) -> list[Segment]:
         cancel.raise_if_cancelled()

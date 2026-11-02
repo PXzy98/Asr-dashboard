@@ -128,8 +128,14 @@ def _merge_short_tail(out: list[Bound], p: SegParams) -> None:
     if len(out) >= 2 and (out[-1].end - out[-1].start) < p.min_segment:
         last = out.pop()
         prev = out[-1]
-        if last.end - prev.start <= p.max_segment * 1.5:
+        if last.end - prev.start <= p.max_segment:
             out[-1] = Bound(prev.start, last.end, prev.overlap_prev)
+        elif last.end - prev.start >= 2 * p.min_segment:
+            # merging would exceed the hard limit: rebalance the last two chunks around the midpoint
+            mid = (prev.start + last.end) / 2
+            ov = last.overlap_prev
+            out[-1] = Bound(prev.start, mid, prev.overlap_prev)
+            out.append(Bound(mid - ov, last.end, ov))
         else:
             out.append(last)
 

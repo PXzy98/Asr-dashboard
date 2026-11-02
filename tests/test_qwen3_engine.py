@@ -118,3 +118,10 @@ def test_max_chunk_seconds_capped_for_aligner():
 def test_backend_status_reports_conflict():
     st = common.backend_status("vllm")
     assert isinstance(st.available, bool) and (st.available or st.reason)
+
+
+def test_explicit_auto_language_is_not_replaced_by_default(patched):
+    e = patched(Qwen3Section(device="cpu", language="zh", aligner={"enabled": False}))
+    e.transcribe(chunks(1), "auto", None, lambda *a: None, CancelToken())
+    e.transcribe(chunks(1), None, None, lambda *a: None, CancelToken())
+    assert e.backend.calls[0][2] == [None] and e.backend.calls[1][2] == ["Chinese"]

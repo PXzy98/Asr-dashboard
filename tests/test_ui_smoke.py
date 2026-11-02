@@ -184,3 +184,30 @@ def test_api_model_test_connection_and_home_transcription(qtbot, window, service
     cfg_text = services.config.path.read_text(encoding="utf-8")
     assert "sk-local-test" not in cfg_text
     srv.shutdown()
+
+
+def test_batch_worker_with_api_engine_finishes(qtbot, services, tmp_path):
+    # review finding: API configs have no keep_loaded -> AttributeError after a successful batch
+    import soundfile as sf
+
+    from asr_dashboard.core import batch as B
+    from asr_dashboard.core.tasks import BatchWorker
+
+    url, hits, srv = _fake_openai_server()
+    services.config.update(lambda c: c.api_models.append(ApiModelConfig(id="b1", name="B", base_url=url, model="m")))
+    d = tmp_path / "in"
+    d.mkdir()
+    sf.write(d / "1.wav", np.zeros(16000 * 2, np.float32) + 0.01, 16000)
+    m = B.BatchManifest.create(d, B.scan_folder(d), tmp_path / "out", {"formats": ["srt"]})
+    cfg = services.cfg.model_copy(deep=True)
+    cfg.output.formats = ["srt"]
+    w = BatchWorker(services, "b1", cfg, m)
+    failed, finished = [], []
+    w.failed.connect(lambda msg, tb: failed.append(tb))
+    w.finished_batch.connect(finished.append)
+    with qtbot.waitSignal(w.finished, timeout=30000):
+        w.start()
+    qtbot.wait(50)
+    assert not failed, failed and failed[0]
+    assert finished and m.items[0].status == B.DONE
+    srv.shutdown()
