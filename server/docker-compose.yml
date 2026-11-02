@@ -1,0 +1,26 @@
+# Qwen3-ASR realtime / OpenAI-compatible server for ASR Dashboard.
+#   MODEL=Qwen/Qwen3-ASR-0.6B PORT=8000 GPU_UTIL=0.5 docker compose up -d
+# Needs the NVIDIA Container Toolkit. Model files are cached in ./hf-cache.
+services:
+  qwen3-asr:
+    image: vllm/vllm-openai:${VLLM_TAG:-v0.32.0}
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - ./hf-cache:/root/.cache/huggingface
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+    ipc: host
+    command: >
+      --model ${MODEL:-Qwen/Qwen3-ASR-1.7B}
+      --host 0.0.0.0 --port 8000
+      --gpu-memory-utilization ${GPU_UTIL:-0.8}
+      --hf-overrides '{"architectures": ["Qwen3ASRRealtimeGeneration"]}'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
