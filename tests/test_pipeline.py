@@ -63,6 +63,22 @@ def cfg_for(tmp_path, **kw):
     return c
 
 
+def test_recognize_stage_reported_before_first_batch(tmp_path):
+    src = make_audio(tmp_path / "talk.wav")
+    eng = FakeEngine()
+    stages = []
+    inner = eng.transcribe
+
+    def transcribe(*a, **kw):
+        stages.append("<engine>")
+        return inner(*a, **kw)
+
+    eng.transcribe = transcribe
+    Pipeline(cfg_for(tmp_path), eng, use_silero=False).run(
+        TaskRequest(str(src)), lambda stage, frac, detail: stages.append(stage), CancelToken())
+    assert stages.index("recognize") < stages.index("<engine>")
+
+
 def test_full_pipeline_fake_engine(tmp_path):
     src = make_audio(tmp_path / "talk.wav")
     eng = FakeEngine(script=lambda c: f"chunk {c.index} says hello.")
