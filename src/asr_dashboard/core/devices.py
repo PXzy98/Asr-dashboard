@@ -138,6 +138,20 @@ def memory_summary(device: str) -> str:
         return device
 
 
+def free_bytes(device: str) -> int | None:
+    """VRAM still usable on ``device``: free on the card plus what torch has reserved but not allocated."""
+    if not device.startswith("cuda"):
+        return None
+    try:
+        import torch
+
+        idx = int(device.split(":")[1]) if ":" in device else 0
+        free, _ = torch.cuda.mem_get_info(idx)
+        return int(free + torch.cuda.memory_reserved(idx) - torch.cuda.memory_allocated(idx))
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def empty_cache() -> None:
     gc.collect()
     try:
