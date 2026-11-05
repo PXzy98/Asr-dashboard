@@ -121,7 +121,7 @@ FAKE_WORKER = textwrap.dedent('''
 @pytest.fixture
 def fake_worker(tmp_path):
     p = tmp_path / "worker.py"
-    p.write_text(FAKE_WORKER)
+    p.write_text(FAKE_WORKER, encoding="utf-8")
     return str(p)
 
 

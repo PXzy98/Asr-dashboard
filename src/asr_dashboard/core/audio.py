@@ -52,7 +52,7 @@ def ffmpeg_version() -> str | None:
         return None
     try:
         out = subprocess.run([exe, "-version"], capture_output=True, text=True, timeout=10,
-                             creationflags=_NO_WINDOW)
+                             encoding="utf-8", errors="replace", creationflags=_NO_WINDOW)
         return out.stdout.splitlines()[0] if out.stdout else "unknown"
     except Exception:  # noqa: BLE001
         return None
@@ -86,7 +86,9 @@ def probe(path: str | Path) -> MediaInfo:
         try:
             out = subprocess.run(
                 [exe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(p)],
-                capture_output=True, text=True, timeout=60, creationflags=_NO_WINDOW,
+                # ffprobe writes UTF-8 (tags, paths); the locale default on Windows is cp1252/gbk
+                capture_output=True, text=True, timeout=60, encoding="utf-8", errors="replace",
+                creationflags=_NO_WINDOW,
             )
             if out.returncode != 0:
                 raise AudioError(out.stderr.strip() or "ffprobe 失败")
