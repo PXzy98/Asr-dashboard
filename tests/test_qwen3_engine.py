@@ -92,6 +92,17 @@ def test_oom_halves_batch(patched):
     assert len(segs) == 4 and e.batch_size == 2
 
 
+def test_batch_capped_by_free_vram(patched, monkeypatch):
+    # 60 s chunks are budgeted ~0.7 GB each; 4 GB free minus 1.5 GB headroom fits 3, not the configured 32
+    be = FakeBackend()
+    e = patched(Qwen3Section(device="cpu", max_inference_batch_size=32, aligner={"enabled": False}), backend=be)
+    monkeypatch.setattr(eng.devices, "free_bytes", lambda dev: 4 * 2**30)
+    progress = []
+    segs = e.transcribe(chunks(14, dur=60.0), None, None, lambda i, n, m: progress.append(i), CancelToken())
+    assert len(segs) == 14 and [c[0] for c in be.calls] == [3, 3, 3, 3, 2]
+    assert progress == [3, 6, 9, 12, 14] and e.batch_size == 32  # the configured value is left alone
+
+
 def test_oom_falls_back_to_cpu(patched, monkeypatch):
     monkeypatch.setattr(eng.devices, "resolve_device", lambda d, gpus=None: "cpu" if d == "cpu" else "cuda:0")
     monkeypatch.setattr(eng.devices, "resolve_dtype_name", lambda d, dev: "float32" if dev == "cpu" else "bfloat16")

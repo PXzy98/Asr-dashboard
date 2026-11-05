@@ -27,6 +27,12 @@ from asr_dashboard.settings_fields import SettingField
 
 log = logging.getLogger(__name__)
 
+# Peak VRAM per second of audio in one batch (measured 8-10 MiB/s for 1.7B + aligner, bf16), with a margin.
+# Windows drivers spill to shared system memory instead of raising OOM, which makes a too-large batch
+# crawl for many minutes, so the batch is capped up front rather than relying on the OOM retry.
+VRAM_PER_AUDIO_SECOND = 12 * 2**20
+VRAM_HEADROOM = 3 * 2**29  # 1.5 GB
+
 _LANG_CHOICES = [("auto", "自动识别")] + [(c, f"{n} ({c})") for c, n in QWEN_LANGUAGES.items()]
 _DEVICE_CHOICES_STATIC = [("auto", "自动（可用显存最大的显卡）"), ("cpu", "CPU")]
 
@@ -279,6 +285,18 @@ class Qwen3LocalEngine(BaseASREngine):
         log.warning("显存不足，推理批大小减半为 %d", self.batch_size)
         return True
 
+    def _fit_batch(self, bs: int, chunks: list[AudioChunk]) -> int:
+        """Shrink ``bs`` so a batch of the longest chunks fits in the free VRAM."""
+        free = devices.free_bytes(self.effective_device)
+        if free is None or not chunks:
+            return bs
+        per_chunk = max(c.duration for c in chunks) * VRAM_PER_AUDIO_SECOND
+        cap = max(1, int((free - VRAM_HEADROOM) // per_chunk))
+        if cap < bs:
+            log.info("可用显存 %.1f GB，推理批大小由 %d 限制为 %d", free / 2**30, bs, cap)
+            return cap
+        return bs
+
     # ------------------------------------------------------------------ inference
     def transcribe(self, chunks: list[AudioChunk], language: str | None, context: str | None,
                    on_progress: ProgressFn, cancel: CancelToken) -> list[Segment]:
@@ -287,7 +305,7 @@ class Qwen3LocalEngine(BaseASREngine):
         forced = lang_name(language or self.cfg.language)
         n = len(chunks)
         raws: list[common.RawResult | None] = [None] * n
-        bs = n if self.batch_size in (-1, 0) else max(1, self.batch_size)
+        bs = self._fit_batch(n if self.batch_size in (-1, 0) else max(1, self.batch_size), chunks)
         i = 0
         while i < n:
             cancel.raise_if_cancelled()
@@ -339,7 +357,8 @@ class Qwen3LocalEngine(BaseASREngine):
 
     def _align(self, todo, on_progress: ProgressFn, cancel: CancelToken) -> list[Segment]:
         out: list[Segment] = []
-        bs = len(todo) if self.batch_size in (-1, 0) else max(1, self.batch_size)
+        bs = self._fit_batch(len(todo) if self.batch_size in (-1, 0) else max(1, self.batch_size),
+                             [c for c, _, _ in todo])
         done = 0
         for i in range(0, len(todo), bs):
             cancel.raise_if_cancelled()
