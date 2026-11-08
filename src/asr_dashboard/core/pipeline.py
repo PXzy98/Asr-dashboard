@@ -247,6 +247,7 @@ class Pipeline:
         per_chunk: list[list[Segment]] = [[] for _ in range(n)]
         written = 0
         done = 0
+        step("recognize", 0.0, f"识别 0/{n}")  # the first batch can take minutes; leave the "分段" label now
         for g0 in range(0, n, group):
             cancel.raise_if_cancelled()
             part = chunks[g0:g0 + group]
